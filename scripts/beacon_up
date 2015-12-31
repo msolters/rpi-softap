@@ -1,0 +1,17 @@
+#!/bin/bash
+
+# (1) Kill daemons, if running
+sudo service 6lbr stop
+sudo killall hostapd
+sudo service udhcpd stop
+
+# (2) Kill the WiFi connection daemon
+sudo wpa_cli -i wlan0 terminate
+
+# (3) Launch the access point
+#sudo service hostapd stop
+sudo hostapd -B config/hostapd.conf
+
+# (4) Configure an IPV4 subnet DHCP server
+sudo ifconfig wlan0 192.168.42.1
+sudo service udhcpd start

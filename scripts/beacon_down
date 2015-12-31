@@ -1,0 +1,6 @@
+#!/bin/bash
+
+# (1) Ensure all SoftAP related services are terminated
+sudo service udhcpd stop
+sudo killall hostapd
+sudo ip addr flush dev wlan0

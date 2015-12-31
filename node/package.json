@@ -1,0 +1,10 @@
+{
+	"name": "rpi-softap",
+	"description": "Allow RPi to be connected to local WiFi via HTTP from other machines.",
+	"version": "0.0.1",
+	"dependencies":	{
+		"wiring-pi": ">=2.1.0",
+		"rpi-ws281x-native": ">=0.8.1",
+		"ps-tree": ">=1.0.1"
+	}
+}

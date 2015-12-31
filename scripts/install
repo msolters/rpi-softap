@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# (1) Install dependencies
+sudo apt-get update
+sudo apt-get install hostapd udhcpd
+
+# (2) Install NodeJS
+sudo dpkg -i /etc/rpi-softap/resources/node_archive_armhf.deb
+
+# (3) Install NodeJS dependencies
+cd /etc/rpi-softap/softap-server
+npm install
+
+cd /etc/rpi-softap/config
+
+# (5) Copy udhcpd configuration files
+sudo cp udhcpd /etc/default/udhcpd
+sudo cp udhcpd.conf /etc/udhcpd.conf
+
+# () Copy and initialize service daemon
+sudo cp rpi-softap.service /etc/systemd/system/rpi-softap.service
+sudo systemctl daemon-reload
+sudo systemctl enable rpi-softap.service

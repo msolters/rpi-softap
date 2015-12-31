@@ -1,0 +1,14 @@
+[Unit]
+Description=headless WiFi management and setup tool
+After=network.target
+
+[Service]
+ExecStart=/etc/rpi-softap/node/rpi-softap.js
+KillMode=mixed
+KillSignal=SIGINT
+Restart=always
+Environment=PATH=/bin:/usr/bin:/usr/local/bin
+WorkingDirectory=/etc/rpi-softap
+
+[Install]
+WantedBy=multi-user.target

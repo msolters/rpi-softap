@@ -1,0 +1,270 @@
+================================================================================
+Realtek Wi-Fi SDK for Android
+Version 2.1
+================================================================================
+	This document provides a simple guide to help engineers to apply Realtek
+Wi-Fi solution onto their Android system. For now, we have supported the
+following Wi-Fi functionality on Android up to 2.3:
+	1. Standard STA mode
+	2. Portable Wi-Fi Hotspot(SoftAP mode)
+	
+	To port Realtek Wi-Fi driver onto Android platform, you can go through the
+following guide with reference codes within our driver package's
+realtek_wifi_SDK_for_android_20120618.tar.gz.
+
+
+	Because Android's SDK may differ from platform to platform, our reference
+codes may not be applied on every platform without modifications. You should
+check if our reference code is suitable for you to use.
+
+================================================================================
+1. Platform Related Files [MUST]
+================================================================================
+a. BOARD_USES_REALTEK_WIFI := true
+	Ensure "BOARD_USES_REALTEK_WIFI := true" is defined in BoardConfig.mk. This
+	is for some compile-time choices to be applied for our Wi-Fi solution.
+
+b. BOARD_WPA_SUPPLICANT_DRIVER := WEXT
+	Our driver implements the wireless extension interface for communication
+	with user space programs. For wpa_supplicant, it's needed to set
+	"BOARD_WPA_SUPPLICANT_DRIVER := WEXT" in BoardConfig.mk to make
+	wpa_supplicant use the interface implemented in driver_wext.c to communicate
+	with our driver.
+
+c. WPA_SUPPLICANT_VERSION := VER_0_6_X
+	Android provides both wpa_supplicant and wpa_supplicant_6 inside. We suggest
+	using wpa_supplicant_6. You can set "WPA_SUPPLICANT_VERSION := VER_0_6_X" in
+	the BoardConfig.mk to use wpa_supplicant_6 for your platform.
+	
+d. Service definitions
+	Make sure the service definitions of wpa_supplicant, dhcpd, hostapd is
+	defined in init.rc or init.xxx.rc for your platform. As following:
+
+service wpa_supplicant /system/bin/wpa_supplicant -Dwext -iwlan0 -c/data/misc/wifi/wpa_supplicant.conf
+	disabled
+	oneshot
+
+service hostapd /system/bin/hostapd_wps /data/misc/wifi/hostapd.conf
+	disabled
+	oneshot
+
+service dhcpcd /system/bin/dhcpcd -ABKL
+	disabled
+	oneshot
+
+	¡° The hostapd service is for Porttable Wi-Fi Hotspot. If you don't want to
+	use Porttable Wi-Fi Hotspot for your platfrom, you can ignore it.
+
+================================================================================
+2. libwpa_client [MUST]
+================================================================================
+	The libwpa_client library is linked into libhardware_legacy library for
+Wi-Fi to communicate with wpa_supplicant. Instead of using the original
+libwpa_client of wpa_supplicant or wpa_supplicant_6, we use the libwpa_client of
+hostapd-0.6.9_rtl from us to provide extension functionalities for our Wi-Fi
+solutions. To apply this:
+
+a. Copy necessary files
+	Copy our hostapd-0.6.9_rtl/ folder into external/ folder of your platform.
+
+b. Prevent the original libwpa_client to be compiled
+	Modify the external/wpa_supplicant/Android.mk and
+	external/wpa_supplicant_6/Android.mk to prevent the libwpa_client to be
+	compiled from wpa_supplicant and wpa_supplicant_6. For example:
+
+ifneq ($(BOARD_USES_REALTEK_WIFI),true)
+include $(CLEAR_VARS)
+LOCAL_MODULE = libwpa_client
+LOCAL_CFLAGS = $(L_CFLAGS)
+LOCAL_SRC_FILES = wpa_ctrl.c os_unix.c
+LOCAL_C_INCLUDES = $(INCLUDES)
+LOCAL_SHARED_LIBRARIES := libcutils
+LOCAL_COPY_HEADERS_TO := libwpa_client
+LOCAL_COPY_HEADERS := wpa_ctrl.h
+include $(BUILD_SHARED_LIBRARY)
+endif 
+	
+Reference files:
+	external/hostapd-0.6.9_rtl/*
+	external/wpa_supplicant/Android.mk
+	external/wpa_supplicant_6/Android.mk
+
+================================================================================
+3. libhardware_legacy [MUST]
+================================================================================
+	The libhardware_legacy library includes functionality for Wi-Fi to operate.
+We have made modifications and extensions for our Wi-Fi solution. To apply this:
+
+a. Copy necessary files
+	Copy our wifi_realtek.c into hardware/libhardware_legacy/wifi folder of your
+	platform.
+
+b. Include wifi_realtek.c into source files
+	Modify hardware/libhardware_legacy/wifi/Android.mk to include wifi_realtek.c
+	instead of wifi.c into LOCAL_SRC_FILES. For example:
+	
+ifeq ($(BOARD_USES_REALTEK_WIFI),true)
+	LOCAL_SRC_FILES += wifi/wifi_realtek.c
+else
+	LOCAL_SRC_FILES += wifi/wifi.c
+endif
+	
+Reference files:
+	hardware/libhardware_legacy/wifi/Android.mk
+	hardware/libhardware_legacy/wifi/wifi_realtek.c
+	
+================================================================================
+4. dhcpcd [SUGGEST]
+================================================================================
+	We have made some modifications for dhcpcd. To apply this:
+	
+a. Copy necessary files
+	Copy our client_realtek.c and logger_realtek.c into external/dhcpcd folder of
+	your platform.
+	
+b. Include logger_realtek.c and client_realtek.c into source files
+	Modify external/dhcpcd/Android.mk to include logger_realtek.c and
+	client_realtek.c instead of logger.c and client.c into LOCAL_SRC_FILES. For
+	example:
+
+ifeq ($(BOARD_USES_REALTEK_WIFI),true)
+LOCAL_SRC_FILES += logger_realtek.c client_realtek.c
+else
+LOCAL_SRC_FILES += logger.c client.c
+endif
+
+c. Include libhardware_legacy into shared libraries
+	Modify external/dhcpcd/Android.mk to include libhardware_legacy into
+	LOCAL_SHARED_LIBRARIES. For example:
+	
+ifeq ($(BOARD_USES_REALTEK_WIFI),true)
+LOCAL_SHARED_LIBRARIES += libhardware_legacy
+endif
+	
+Reference files:
+	external/dhcpcd/Android.mk
+	external/dhcpcd/client_realtek.c
+	external/dhcpcd/logger_realtek.c
+	
+================================================================================
+5. wpa_supplicant
+================================================================================
+a. Version of wpa_supplicant
+	We suggest using wpa_supplicant_6 of Android. See 1.c. for reference.
+
+b. Prevent the original libwpa_client to be compiled
+	Because we use libwpa_client from hostapd-0.6.9_rtl. We should prevent the
+	original libwpa_client of wpa_supplicant and wpa_supplicant_6 to be compiled.
+	See '2. libwpa_client' for reference.
+	
+c. wpa_supplicant.conf
+	Following is the reference content of wpa_supplicant.conf:
+	
+ctrl_interface=DIR=/data/misc/wifi/wpa_supplicant GROUP=wifi
+update_config=1
+ap_scan=1
+
+Reference files:
+	external/wpa_supplicant/Android.mk
+
+================================================================================
+6. netd [MUST for Portable Wi-Fi hotspot]
+================================================================================
+	The Portable Wi-Fi hotspot functionality is controlled by the
+SoftapController subfunction of netd. We provide our own SoftapController
+implementation to run our hostapd daemon for softap mode. To apply this:
+
+a. Copy necessary files
+	Copy our SoftapController_realtek.cpp into system/netd/ folder of your
+	platform.
+	
+b. Include SoftapController_realtek.cpp into source files
+	Modify system/netd/Android.mk to include SoftapController_realtek.cpp
+	instead of SoftapController.cpp into LOCAL_SRC_FILES. For example:
+
+ifeq ($(BOARD_USES_REALTEK_WIFI), true)
+    LOCAL_SRC_FILES += SoftapController_realtek.cpp
+else
+    LOCAL_SRC_FILES += SoftapController.cpp 
+endif
+
+c. Include libhardware_legacy into shared libraries
+	Modify system/netd/Android.mk to include libhardware_legacy into
+	LOCAL_SHARED_LIBRARIES. For example:
+
+ifeq ($(BOARD_USES_REALTEK_WIFI), true)
+    LOCAL_SHARED_LIBRARIES += libhardware_legacy
+endif
+
+Reference files:
+	system/netd/Android.mk
+	system/netd/SoftapController_realtek.cpp
+
+================================================================================
+7. Opening Portable Wi-Fi Hotspot UI
+================================================================================
+	We should set interface item to the following two resource configurations of
+your platform to show the UI for Portable Wi-Fi Hotspot.
+
+a. config_tether_wifi_regexs
+	The interfaces set here is used as the interfaces for Wi-Fi LAN port. We use
+	'wlap0' by default when our wifi is set as softap mode. So it needs to set
+	'wlap0' here for system to recognized 'wlap0' as Wi-Fi LAN port.
+	For example:
+	
+<string-array translatable="false" name="config_tether_wifi_regexs">
+		<item>"wlap0"</item>
+</string-array>
+	
+b. config_tether_upstream_regexs
+	The interfaces set here are used as the interfaces for WAN port to connect
+	to internet. Usually, 'ppp0' used by 3G, 'eth0' used by ethernet, 'wlan0'
+	used by Wi-Fi can be set here. For example:
+
+<string-array translatable="false" name="config_tether_upstream_regexs">
+		<item>"ppp\\d"</item>
+		<item>"eth\\d"</item>
+		<item>"wlan\\d"</item>
+</string-array>
+	
+	Android will apply DHCP server function for Wi-Fi LAN port, and setup NAT
+between Wi-Fi LAN port and WAN port automatically.
+	
+Reference files:
+	frameworks/base/core/res/res/values/config.xml
+
+================================================================================
+8. Patch for WifiSettings.java
+================================================================================
+	The WifiSettings UI page has bug which doesn't get lastest WiFi information.
+We provide patch to fix this problem. Add the following 4 line at the beginning
+of function updateAccessPoints():
+
+        mLastInfo = mWifiManager.getConnectionInfo();
+        mLastState = WifiInfo.getDetailedStateOf(mLastInfo.getSupplicantState());
+        if(mLastState == DetailedState.OBTAINING_IPADDR && mLastInfo.getIpAddress() != 0)
+            mLastState = DetailedState.CONNECTED;
+
+Reference files:
+	packages\apps\Settings\src\com\android\settings\wifi\WifiSettings.java
+
+================================================================================
+9. Driver Configuration and Compilation 
+================================================================================
+a. MODULE_NAME defined in Makefile
+	For android to rmmod the wifi driver module, the driver module name, which
+	is decided in compilation time as MODULE_NAME defined in Makefile, should be
+	the same as WIFI_DRIVER_MODULE_NAME defined in wifi_realtek.c:
+		
+#define WIFI_DRIVER_MODULE_NAME	 "wlan"
+
+b. Driver Compilation
+	For driver compilation, please refer to:
+		doument/Quick_Start_Guide_for_Driver_Compilation_and_Installation.pdf
+	
+c. Where to place wifi driver module
+	If you compile wifi driver as .ko file, you should place wifi driver module
+	to the path defined in wifi_realtek.c with WIFI_DRIVER_MODULE_PATH macro.
+	The default path defined in wifi_realtek.c:
+
+#define WIFI_DRIVER_MODULE_PATH	"/system/wifi/wlan.ko"
