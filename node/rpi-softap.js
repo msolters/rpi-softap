@@ -12,12 +12,8 @@ var psTree = require('ps-tree');
 var events = require("events");
 var eventEmitter = new events.EventEmitter();
 
-// Define server configuration
-SERVER_PORT = 80;
-SERVER_HOST =  '192.168.42.1';
+var settings = require("settings.json");
 
-// Neopixel configuration
-var NEO_PIXELS_NUM = 16;
 /*
  *  Scales a hex color (assumed @ max brightness) to another max brightness.
  */
@@ -34,13 +30,10 @@ function rgb2Int(r, g, b) {
   return ((r & 0xff) << 16) + ((g & 0xff) << 8) + (b & 0xff);
 }
 
-// Define GPIO assignments
-var SETUP_pin = 2;
-
 // Setup GPIO channels
 gpio.setup('gpio');
-gpio.pinMode(SETUP_pin, gpio.INPUT);
-gpio.pullUpDnControl(SETUP_pin, gpio.PUD_UP);
+gpio.pinMode(settings.setup_button_pin, gpio.INPUT);
+gpio.pullUpDnControl(settings.setup_button_pin, gpio.PUD_UP);
 
 /*
  *  Track & kill child processes
@@ -214,9 +207,9 @@ eventEmitter.on('setup_1', function() {
 
 // (2) Start SoftAP Server
 eventEmitter.on('setup_2', function() {
-  server.listen(SERVER_PORT, SERVER_HOST);
+  server.listen(settings.server.port, settings.server.host);
   eventEmitter.emit("neo", "breathe", rgb2Int(0, 0, 255));
-  console.log('[SoftAP]:\tServer listening at http://'+SERVER_HOST+':'+SERVER_PORT+'.');
+  console.log('[SoftAP]:\tServer listening at http://'+settings.server.host+':'+settings.server.port+'.');
   // Note: The server will call setup_3 when the user has completed configuration.
 });
 
@@ -288,7 +281,7 @@ eventEmitter.on('test_com', function() {
 /*
  *  SETUP button interrupt.
  */
-gpio.wiringPiISR(SETUP_pin, gpio.INT_EDGE_RISING, function() {
+gpio.wiringPiISR(settings.setup_button_pin, gpio.INT_EDGE_RISING, function() {
   console.log('[SoftAP]:\tSETUP button pressed.');
   eventEmitter.emit("neo", "off");
   killCurrentProcess();
@@ -302,9 +295,9 @@ gpio.wiringPiISR(SETUP_pin, gpio.INT_EDGE_RISING, function() {
 var neo_conf = {
   timer: null,
   color: 0x000000,
-  num: NEO_PIXELS_NUM,
+  num: settings.neopixels.size,
   offset: 0,
-  pixelData: new Uint32Array(NEO_PIXELS_NUM),
+  pixelData: new Uint32Array(settings.neopixels.size),
   animation: null,
   t0: null,
   brightness: 100,
