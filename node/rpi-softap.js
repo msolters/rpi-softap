@@ -54,13 +54,9 @@ kill_requested = false;
 var killCurrentProcess = function() {
   if (!current_proc) return;
   kill_requested = true;
-try {
   psTree( current_proc.pid, function(err, children) {
       child_process.spawnSync('kill', ['-2'].concat(children.map(function(p) {return p.PID})));
   });
-} catch (e) {
-  console.log(e);
-}
   current_proc = null;
 };
 
