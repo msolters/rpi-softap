@@ -12,7 +12,7 @@ var psTree = require('ps-tree');
 var events = require("events");
 var eventEmitter = new events.EventEmitter();
 
-var settings = require("settings.json");
+var settings = JSON.parse( fs.readFileSync("settings.json", "utf8") );
 
 /*
  *  Scales a hex color (assumed @ max brightness) to another max brightness.
