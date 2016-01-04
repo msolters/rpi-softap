@@ -3,7 +3,7 @@ Description=headless WiFi management and setup tool
 After=network.target
 
 [Service]
-ExecStart=/etc/rpi-softap/node/rpi-softap.js
+ExecStart=/etc/rpi-softap/rpi-softap.js
 KillMode=mixed
 KillSignal=SIGINT
 Restart=always
