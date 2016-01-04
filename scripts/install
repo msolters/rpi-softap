@@ -1,13 +1,16 @@
 #!/bin/bash
 
-# (1) Install dependencies
+# (1) First, we must make sure these files are editable
+sudo chmod 777 -R /etc/rpi-softap
+
+# (2) Install dependencies
 sudo apt-get update
 sudo apt-get install hostapd udhcpd
 
-# (2) Install NodeJS
+# (3) Install NodeJS
 sudo dpkg -i /etc/rpi-softap/resources/node_archive_armhf.deb
 
-# (3) Install NodeJS dependencies
+# (4) Install NodeJS dependencies
 cd /etc/rpi-softap
 sudo npm install
 
