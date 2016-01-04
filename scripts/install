@@ -18,6 +18,6 @@ sudo cp udhcpd /etc/default/udhcpd
 sudo cp udhcpd.conf /etc/udhcpd.conf
 
 # () Copy and initialize service daemon
-sudo cp rpi-softap.service /etc/systemd/system/rpi-softap.service
+sudo cp /etc/rpi-softap/scripts/rpi-softap.service /etc/systemd/system/rpi-softap.service
 sudo systemctl daemon-reload
 sudo systemctl enable rpi-softap.service
