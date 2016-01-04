@@ -12,7 +12,7 @@ sudo dpkg -i /etc/rpi-softap/resources/node_archive_armhf.deb
 
 # (4) Install NodeJS dependencies
 cd /etc/rpi-softap
-sudo npm install
+npm install
 
 cd /etc/rpi-softap/config
 
