@@ -10,10 +10,10 @@ This software makes it easy to create a Raspberry Pi-based product that can be c
 # Usage
 Command | Action
 ---|---
-sudo systemctl start rpi-softap | Manually start the SoftAP daemon
-sudo systemctl stop rpi-softap | Manually stop the SoftAP daemon
-sudo systemctl enable rpi-softap | Run rpi-softap on boot (default)
-sudo systemctl disable rpi-softap | Do not run rpi-softap on boot
+sudo systemctl start rpi-softap.service | Manually start the SoftAP daemon
+sudo systemctl stop rpi-softap.service | Manually stop the SoftAP daemon
+sudo systemctl enable rpi-softap.service | Run rpi-softap on boot (default)
+sudo systemctl disable rpi-softap.service | Do not run rpi-softap on boot
 
 *  If there are existing WiFi credentials saved, the RPi will attempt to connect using those.
 *  If the RPi connection attempt goes on infinitely, you either entered incorrect password or the WiFi network is not in range.  Press the SETUP button to enter setup mode.
@@ -46,7 +46,24 @@ ignore_broadcast_ssid=0
 wmm_enabled=0
 ```
 
+## Settings
+Almost all configuration parameters are defined by the file `settings.json`.
 
+*  *server.port*:  The port that the RPi's HTTP setup server will listen on while in SoftAP mode.
+*  *server.host*:  The IP address that the RPi's HTTP setup server can be reached out while in SoftAP mode.
+*  *server.ssid*:  This string specifies the name of the AP SSID that the RPi will broadcast during setup.
+*  *neopixels.enabled*:  A boolean; if false, you can optionally disable neopixels.
+*  *neopixels.size*:  This is the number of pixels in the Neopixels WS281x strip connected to GPIO pin 12.
+*  *setup_button_pin*: This is the GPIO pin that the SETUP button is connected to.  Default is pin 2.
+
+### Actions
+The `actions` setting object provides you the option of running scripts once the RPi is online, or immediately before setup.
+
+#### `actions.whenOnline`
+This script should launch your application code -- the stuff you are actually interested in running once the RPi is online!  This script is executed as soon as the RPi has acquired a valid IP address from the WiFi access point.
+
+#### `actions.preSetup`
+This script is run right after the SETUP button is pressed, and immediately before SoftAP is configured.  You can use this opportunity to e.g. kill any processes that might throw errors or crash if the network interfaces are changed and/or reconfigured (as will happen during SoftAP config).
 
 ---
 
