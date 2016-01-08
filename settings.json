@@ -6,8 +6,7 @@
   },
   "neopixels": {
     "enabled": true,
-    "size": 16,
-    "data_pin": null
+    "size": 16
   },
   "setup_button_pin": 2,
   "actions": {
