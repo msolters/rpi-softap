@@ -49,12 +49,14 @@ wmm_enabled=0
 ## Settings
 Almost all configuration parameters are defined by the file `settings.json`.
 
-*  *server.port*:  The port that the RPi's HTTP setup server will listen on while in SoftAP mode.
-*  *server.host*:  The IP address that the RPi's HTTP setup server can be reached out while in SoftAP mode.
-*  *server.ssid*:  This string specifies the name of the AP SSID that the RPi will broadcast during setup.
-*  *neopixels.enabled*:  A boolean; if false, you can optionally disable neopixels.
-*  *neopixels.size*:  This is the number of pixels in the Neopixels WS281x strip connected to GPIO pin 12.
-*  *setup_button_pin*: This is the GPIO pin that the SETUP button is connected to.  Default is pin 2.
+Settings Property | Purpose
+---|---
+**server.port** |  The port that the RPi's HTTP setup server will listen on while in SoftAP mode.
+**server.host** |  The IP address that the RPi's HTTP setup server can be reached out while in SoftAP mode.
+**server.ssid** |  This string specifies the name of the AP SSID that the RPi will broadcast during setup.
+**neopixels.enabled** |  A boolean; if false, you can optionally disable neopixels.
+**neopixels.size** |  This is the number of pixels in the Neopixels WS281x strip connected to GPIO pin 12.
+**setup_button_pin** | This is the GPIO pin that the SETUP button is connected to.  Default is pin 2.
 
 ### Actions
 The `actions` setting object provides you the option of running scripts once the RPi is online, or immediately before setup.
