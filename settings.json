@@ -10,6 +10,7 @@
   },
   "setup_button_pin": 2,
   "actions": {
-    "whenOnline": null
+    "whenOnline": null,
+    "preSetup": null
   }
 }
