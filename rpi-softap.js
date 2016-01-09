@@ -155,6 +155,22 @@ var applyWiFiConfiguration  = function( payload ) {
 };
 
 /*
+ *  Write a hostapd configuration file based on the parameters contained
+ *  in the settings object.
+ */
+var configureHostapd = function() {
+  var hostapd_config = 'interface=wlan0\n';
+  hostapd_config += 'driver=nl80211\n';
+  hostapd_config += 'ssid=\"' + (settings.server.ssid || "RPi SoftAP") + '\"\n';
+  hostapd_config += 'hw_mode=g\n';
+  hostapd_config += 'channel=' + (String(settings.server.channel) || "9") + '\n';
+  hostapd_config += 'macaddr_acl=0\n';
+  hostapd_config += 'ignore_broadcast_ssid=0\n';
+  hostapd_config += 'wmm_enabled=0';
+  fs.writeFileSync("config/hostapd.conf", hostapd_config);
+};
+
+/*
  *  Create an HTTP server that listens for new WiFi credentials
  *  and also provides lists of nearby WiFi access points.
  */
@@ -200,6 +216,7 @@ server = http.createServer( function(req, res) {
 eventEmitter.on('setup_1', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 1500, tracelength: 8});
   console.log("[SoftAP]:\tInitializing access point...");
+  configureHostapd();
   current_proc = exec("sudo bash scripts/beacon_up", function() {
     goTo('setup_2');
   });
