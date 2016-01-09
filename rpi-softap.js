@@ -258,13 +258,43 @@ eventEmitter.on('connect_1', function() {
     });
 });
 
+var wpaOutputBuffer = "";
 eventEmitter.on('connect_2', function() {
     eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 255), {period: 4000, tracelength: 8});
     console.log("[SoftAP]:\tInvoking WiFi daemon...");
-    current_proc = exec("sudo wpa_supplicant -s -B -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf", function() {
-      goTo('connect_3');
-    });
+
+    current_proc = exec("sudo stdbuf -o0 wpa_supplicant -d -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf");
+
+    wpaOutputBuffer = "";
+    current_proc.stdout.on('data', parseWpaStdout);
 });
+
+function parseWpaStdout(data) {
+  data = data.toString();
+  cleanEnd = false;
+  if (data[data.length-1] === '\n') {
+    cleanEnd = true;
+  }
+  var lines = data.split("\n");
+  for (var k=0; k<lines.length-1; k++) {
+    var line = wpaOutputBuffer + lines[k];
+    wpaOutputBuffer = "";
+    processWpaStdout( line );
+  }
+  if (cleanEnd) {
+    processWpaStdout( lines[k] );
+  } else {
+    wpaOutputBuffer += lines[k];
+  }
+}
+
+function processWpaStdout(line) {
+  if (line.indexOf("wlan0: CTRL-EVENT-CONNECTED") > -1) {
+    // The WiFi information was valid and we are associated!
+    current_proc.stdout.removeListener('data', parseWpaStdout);
+    goTo('connect_3');  
+  } else {}
+};
 
 eventEmitter.on('connect_3', function() {
     eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 2000, tracelength: 8});
