@@ -1,7 +1,6 @@
 {
   "server": {
     "port": 80,
-    "host": "192.168.42.1",
     "ssid": "Set Me Up!"
   },
   "neopixels": {
