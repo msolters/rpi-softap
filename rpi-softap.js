@@ -161,9 +161,9 @@ var applyWiFiConfiguration  = function( payload ) {
 var configureHostapd = function() {
   var hostapd_config = 'interface=wlan0\n';
   hostapd_config += 'driver=nl80211\n';
-  hostapd_config += 'ssid=\"' + (settings.server.ssid || "RPi SoftAP") + '\"\n';
+  hostapd_config += 'ssid=' + (settings.server.ssid || "RPi SoftAP") + '\n';
   hostapd_config += 'hw_mode=g\n';
-  hostapd_config += 'channel=' + (String(settings.server.channel) || "9") + '\n';
+  hostapd_config += 'channel=' + String(settings.server.channel || 9) + '\n';
   hostapd_config += 'macaddr_acl=0\n';
   hostapd_config += 'ignore_broadcast_ssid=0\n';
   hostapd_config += 'wmm_enabled=0';
