@@ -18,10 +18,11 @@ var settings = JSON.parse( fs.readFileSync("settings.json", "utf8") );
  *  Scales a hex color (assumed @ max brightness) to another max brightness.
  */
 function scaleColorBrightness(c, brightness) {
-  var r = (c >> 16) && 0xff;
-  var g = (c >> 8) && 0xff;
-  var b = c && 0xff;
-  return ((r & brightness) << 16) + ((g & brightness) << 8) + (b & brightness);
+  var scaler = brightness / 0xff;
+  var r = ((c >> 16) & 0xff) * scaler;
+  var g = ((c >> 8) & 0xff) * scaler;
+  var b = (c & 0xff) * scaler;
+  return ((r & 0xff) << 16) + ((g & 0xff) << 8) + (b & 0xff);
 }
 /*
  *  Converts an (r, g, b) tuple into a single packed hex integer.
@@ -291,9 +292,19 @@ function parseWpaStdout(data) {
 function processWpaStdout(line) {
   if (line.indexOf("wlan0: CTRL-EVENT-CONNECTED") > -1) {
     // The WiFi information was valid and we are associated!
+    console.log("[SoftAP]:\tSuccessfully associated with WiFi AP.");
     current_proc.stdout.removeListener('data', parseWpaStdout);
     goTo('connect_3');  
-  } else {}
+  } else if (line.indexOf("wlan0: WPA: 4-Way Handshake failed - pre-shared key may be incorrect") > -1) {
+    // The provided password is incorrect
+    console.log("[SoftAP]:\tThe provided WiFi credentials don't seem to be valid; probably an incorrect password.");
+    current_proc.stdout.removeListener('data', parseWpaStdout);
+    killCurrentProcess();
+    eventEmitter.emit('failure_incorrect_passphrase');
+  } else if (line.indexOf("wlan0: No suitable network found") > -1) {
+    console.log("[SoftAP]:\tThe WiFi network is not within range!");
+    eventEmitter.emit('failure_ssid_not_found');
+  }
 };
 
 eventEmitter.on('connect_3', function() {
@@ -315,6 +326,17 @@ eventEmitter.on('connect_4', function() {
 eventEmitter.on('connect_done', function() {
     console.log('[SoftAP]:\tWiFi connection complete.');
     eventEmitter.emit("neo", "breathe", rgb2Int(0, 255, 0));
+});
+
+/*
+ *  Connection Failure Events
+ */
+eventEmitter.on('failure_incorrect_passphrase', function() {
+    eventEmitter.emit("neo", "breathe", rgb2Int(255, 0, 0));
+});
+
+eventEmitter.on('failure_ssid_not_found', function() {
+    eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 2000, tracelength: 8});
 });
 
 eventEmitter.on('test_com', function() {
