@@ -49,23 +49,45 @@ var killCurrentProcess = function() {
   if (!current_proc) return;
   kill_requested = true;
   psTree( current_proc.pid, function(err, children) {
-      child_process.spawnSync('kill', ['-2'].concat(children.map(function(p) {return p.PID})));
+      child_process.spawnSync('kill', ['-2'].concat(children.map(function(p) {return p.PID})));  
   });
-  current_proc = null;
 };
 
 /*
- *  Go to the next event named by step, unless
- *  the last process was intentionally killed.
+ *  execStepCommand will asnychronously issue a system command, and
+ *  optionally emit a specified nextStep -- but ONLY if the command
+ *  is not killed by killCurrentProcess being called.  This allows
+ *  command chains to be cleanly broken before issuing a new next step
+ *  via waitForCurrentProcess(nextStep).
  */
-var goTo = function(step) {
-  current_proc = null;
-  if (kill_requested) {
-    kill_requested = false;
-  } else {
-    eventEmitter.emit(step);
-  }
+var execStepCommand = function(command, nextStep) {
+  current_proc = exec(command, function(err, stdout, stderr) {
+    if ( kill_requested ) {
+      kill_requested = false;
+      return;
+    } else {
+      kill_requested = false;
+      if ( nextStep ) {
+        eventEmitter.emit( nextStep );
+      }
+    }
+  });
 };
+
+/*
+ *  This method will defer the emission of a specified nextStep until
+ *  the kill_requested flag has been neutralized, indicating that any
+ *  outstanding process has terminated.
+ */
+curr_proc_timer = null;
+var waitForCurrentProcess = function(nextStep) {
+  curr_proc_timer = setInterval( function() {
+    if ( !kill_requested ) {
+      clearInterval( curr_proc_timer );
+      eventEmitter.emit( nextStep );
+    }
+  }, 50);
+}
 
 //  Regex Rules for Parsing iwlist results
 var iwlist_parse = {
@@ -196,7 +218,7 @@ server = http.createServer( function(req, res) {
         applyWiFiConfiguration( payload );
         console.log("[SoftAP]:\tWiFi Configuration: "+payload);
         console.log("[SoftAP]:\tTerminating SETUP");
-        goTo('setup_3');
+        waitForCurrentProcess('setup_3');
       });
       //res.writeHead(200, {'Content-Type': 'text/html'});
       res.end('Configuration parameters received.');
@@ -218,16 +240,14 @@ eventEmitter.on('setup_1', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 1500, tracelength: 8});
   console.log("[SoftAP]:\tInitializing access point...");
   configureHostapd();
-  current_proc = exec("sudo bash scripts/beacon_up", function() {
-    goTo('setup_2');
-  });
+  execStepCommand("sudo bash scripts/beacon_up", "setup_2");
 });
 
 // (2) Start SoftAP Server
 eventEmitter.on('setup_2', function() {
-  server.listen(settings.server.port, settings.server.host);
+  server.listen(settings.server.port, "192.168.42.1");
   eventEmitter.emit("neo", "breathe", rgb2Int(0, 0, 255));
-  console.log('[SoftAP]:\tServer listening at http://'+settings.server.host+':'+settings.server.port+'.');
+  console.log('[SoftAP]:\tServer listening at http://192.168.42.1:'+settings.server.port+'.');
   // Note: The server will call setup_3 when the user has completed configuration.
 });
 
@@ -236,15 +256,13 @@ eventEmitter.on('setup_3', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 2000, tracelength: 8});
   console.log("[SoftAP]:\tServer is now terminating.");
   server.close();
-  goTo('setup_4');
+  waitForCurrentProcess('setup_4');
 });
 
 // (4) Stop the SoftAP beacon
 eventEmitter.on('setup_4', function() {
   console.log("[SoftAP]:\tTerminating access point...");
-  current_proc = exec("sudo bash scripts/beacon_down", function() {
-    goTo('connect_1'); // Time to attempt to connect!
-  });
+  execStepCommand("sudo bash scripts/beacon_down", 'connect_1');
 });
 
 
@@ -254,9 +272,7 @@ eventEmitter.on('setup_4', function() {
 eventEmitter.on('connect_1', function() {
     eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 5000, tracelength: 8});
     console.log("[SoftAP]:\tTearing down any pre-existing WiFi daemon...");
-    current_proc = exec("sudo wpa_cli -i wlan0 terminate", function() {
-      goTo('connect_2');
-    });
+    execStepCommand("sudo wpa_cli -i wlan0 terminate", 'connect_2');
 });
 
 var wpaOutputBuffer = "";
@@ -264,7 +280,7 @@ eventEmitter.on('connect_2', function() {
     eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 255), {period: 4000, tracelength: 8});
     console.log("[SoftAP]:\tInvoking WiFi daemon...");
 
-    current_proc = exec("sudo stdbuf -o0 wpa_supplicant -d -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf");
+    execStepCommand("sudo stdbuf -o0 wpa_supplicant -d -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf");
 
     wpaOutputBuffer = "";
     current_proc.stdout.on('data', parseWpaStdout);
@@ -294,7 +310,7 @@ function processWpaStdout(line) {
     // The WiFi information was valid and we are associated!
     console.log("[SoftAP]:\tSuccessfully associated with WiFi AP.");
     current_proc.stdout.removeListener('data', parseWpaStdout);
-    goTo('connect_3');  
+    waitForCurrentProcess('connect_3');  
   } else if (line.indexOf("wlan0: WPA: 4-Way Handshake failed - pre-shared key may be incorrect") > -1) {
     // The provided password is incorrect
     console.log("[SoftAP]:\tThe provided WiFi credentials don't seem to be valid; probably an incorrect password.");
@@ -310,17 +326,13 @@ function processWpaStdout(line) {
 eventEmitter.on('connect_3', function() {
     eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 2000, tracelength: 8});
     console.log("[SoftAP]:\tFlushing IP address...");
-    current_proc = exec("sudo ip addr flush dev wlan0", function() {
-      goTo('connect_4');
-    });
+    execStepCommand("sudo ip addr flush dev wlan0", 'connect_4');
 });
 
 eventEmitter.on('connect_4', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 1000, tracelength: 8});
   console.log("[SoftAP]:\tAcquiring IP address...");
-  current_proc = exec("sudo dhclient wlan0", function() {
-    goTo('connect_done');
-  });
+  execStepCommand("sudo dhclient wlan0", 'connect_done');
 });
 
 eventEmitter.on('connect_done', function() {
@@ -354,7 +366,7 @@ gpio.wiringPiISR(settings.setup_button_pin, gpio.INT_EDGE_RISING, function() {
   console.log('[SoftAP]:\tSETUP button pressed.');
   eventEmitter.emit("neo", "off");
   killCurrentProcess();
-  eventEmitter.emit('setup_1');
+  waitForCurrentProcess('setup_1');
 });
 
 

@@ -1,2 +1,3 @@
 credentials.conf
 node_modules/
+config/hostapd.conf

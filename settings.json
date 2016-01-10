@@ -1,7 +1,7 @@
 {
   "server": {
     "port": 80,
-    "ssid": "Set Me Up!"
+    "ssid": "Driblet"
   },
   "neopixels": {
     "enabled": true,
