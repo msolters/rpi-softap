@@ -1,4 +1,0 @@
-#!/bin/bash
-
-sudo /etc/rpi-softap/node/rpi-softap.js &
-echo $! > /var/run/rpi-softap.pid

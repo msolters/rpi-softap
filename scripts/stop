@@ -1,4 +1,0 @@
-#!/bin/bash
-
-pid=`cat /var/run/rpi-softap.pid`
-sudo kill -2 $pid
