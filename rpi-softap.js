@@ -238,7 +238,18 @@ server = http.createServer( function(req, res) {
 /*
  *  Register SETUP commands.
  */
- // (1) Start SoftAP Beacon
+// (0) Pre-Setup
+eventEmitter.on('pre-setup', function() {
+  eventEmitter.emit("neo", "spin", rgb2Int(70, 200, 200), {period: 1500, tracelength: 8});
+  console.log("[SoftAP]:\tExecuting pre-setup command...");
+  if (settings.actions.preSetup) {
+    execStepCommand(settings.actions.preSetup, "setup_1");
+  } else {
+    eventEmitter.emit("setup_1");
+  }
+});
+
+// (1) Start SoftAP Beacon
 eventEmitter.on('setup_1', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 1500, tracelength: 8});
   console.log("[SoftAP]:\tInitializing access point...");
@@ -366,7 +377,7 @@ gpio.wiringPiISR(settings.setup_button_pin, gpio.INT_EDGE_RISING, function() {
   console.log('[SoftAP]:\tSETUP button pressed.');
   eventEmitter.emit("neo", "off");
   killCurrentProcess();
-  waitForCurrentProcess('setup_1');
+  waitForCurrentProcess('pre-setup');
 });
 
 
@@ -518,7 +529,7 @@ fs.access("config/credentials.conf", fs.F_OK, function(err) {
   if (!err) {
     eventEmitter.emit('connect_1');
   } else {
-    eventEmitter.emit('setup_1');
+    eventEmitter.emit('pre-setup');
   }
 });
 
