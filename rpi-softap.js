@@ -390,7 +390,7 @@ neopixels.init(neo_conf.num);
 
 var neopixelBreathe = function() {
   var dt = Date.now() - neo_conf.t0;
-  neopixels.setBrightness( Math.floor( (Math.sin(dt/1000)  + 1) * (neo_conf.brightness/5.12) ) );
+  neopixels.setBrightness( Math.floor( (Math.cos(dt/1000) + 1) * (neo_conf.brightness/5.12) ) );
 };
 
 var neopixelSpin = function() {
@@ -450,6 +450,7 @@ var renderColor = function() {
   for(var i = 0; i < neo_conf.num; i++) {
     neo_conf.pixelData[i] = neo_conf.color;
   }
+  //neopixels.setBrightness( neo_conf.brightness );
   neopixels.render(neo_conf.pixelData);
 };
 
@@ -472,8 +473,6 @@ eventEmitter.on('neo', function(animation_type, color, options) {
     neopixels.setBrightness(0);
     renderColor();
     return;
-  } else {
-    neopixels.setBrightness(neo_conf.brightness);
   }
 
   // (2)  Update the color
@@ -486,14 +485,19 @@ eventEmitter.on('neo', function(animation_type, color, options) {
   var refresh_rate = 100;
   switch (animation_type) {
     case "breathe":
+      neopixels.setBrightness( neo_conf.brightness / 2 );
       renderColor();
       neo_conf.t0 = Date.now();
       break;
     case "spin":
       setSpinPeriod( options.period );
       setSpinTrace( options.tracelength );
+      neopixels.setBrightness( neo_conf.brightness );
       neo_conf.t0 = Date.now();
       refresh_rate = 30;
+      break;
+    default:
+      neopixels.setBrightness( neo_conf.brightness );
       break;
   }
 
