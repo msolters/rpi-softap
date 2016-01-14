@@ -359,14 +359,6 @@ eventEmitter.on('failure_ssid_not_found', function() {
     eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 2000, tracelength: 8});
 });
 
-eventEmitter.on('test_com', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 1000, tracelength: 8});
-  console.log('[SoftAP]:\tRunning infinite tail...');
-  current_proc = exec("tail -f /var/log/6lbr.log", function() {
-    console.log("test_com callback!");
-  });
-});
-
 /*
  *  SETUP button interrupt.
  */
