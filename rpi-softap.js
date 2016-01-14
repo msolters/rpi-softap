@@ -62,6 +62,8 @@ var killCurrentProcess = function() {
  */
 var execStepCommand = function(command, nextStep) {
   current_proc = exec(command, function(err, stdout, stderr) {
+    console.log(command, " is killed, kill_requested: ", kill_requested);
+    current_proc = null;
     if ( kill_requested ) {
       kill_requested = false;
       return;
@@ -82,6 +84,7 @@ var execStepCommand = function(command, nextStep) {
 curr_proc_timer = null;
 var waitForCurrentProcess = function(nextStep) {
   curr_proc_timer = setInterval( function() {
+    console.log(nextStep, " is waiting...");
     if ( !kill_requested ) {
       clearInterval( curr_proc_timer );
       eventEmitter.emit( nextStep );
@@ -320,6 +323,11 @@ function processWpaStdout(line) {
   } else if (line.indexOf("wlan0: No suitable network found") > -1) {
     console.log("[SoftAP]:\tThe WiFi network is not within range!");
     eventEmitter.emit('failure_ssid_not_found');
+  } else if (line.indexOf("Invalid passphrase") > -1) {
+    console.log("[SoftAP]:\tThe provided WiFi passphrase is invalid (incorrect length).");
+    current_proc.stdout.removeListener('data', parseWpaStdout);
+    killCurrentProcess();
+    eventEmitter.emit('failure_incorrect_passphrase');
   }
 };
 
