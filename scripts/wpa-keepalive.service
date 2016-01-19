@@ -1,0 +1,11 @@
+[Unit]
+Description=Keeps wpa_supplicant alive
+
+[Service]
+ExecStart=/sbin/wpa_supplicant -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c /etc/rpi-softap/config/credentials.conf -f /etc/rpi-softap/config/wpa_log
+KillSignal=SIGINT
+Restart=always
+Environment=PATH=/sbin:/bin:/usr/bin:/usr/local/bin
+
+[Install]
+WantedBy=multi-user.target

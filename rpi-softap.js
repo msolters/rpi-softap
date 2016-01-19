@@ -259,6 +259,7 @@ eventEmitter.on('pre-setup', function() {
 eventEmitter.on('setup_1', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 1500, tracelength: 8});
   console.log("[SoftAP]:\tInitializing access point...");
+  wpaTail.unwatch();
   configureHostapd();
   execStepCommand("sudo bash scripts/beacon_up", "setup_2");
 });
@@ -292,26 +293,39 @@ eventEmitter.on('setup_4', function() {
 eventEmitter.on('connect_1', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 5000, tracelength: 8});
   console.log("[SoftAP]:\tTearing down any pre-existing WiFi daemon...");
-  execStepCommand("sudo wpa_cli -i wlan0 terminate", 'connect_2');
+  execStepCommand('sudo systemctl stop wpa-keepalive.service', 'connect_2');//"sudo wpa_cli -i wlan0 terminate", 'connect_2');
 });
+
+watchingWPA = false;
+function watchWPA( watch ) {
+  watchingWPA = watch;
+  if (watch) {
+    wpaTail.watch();
+  } else {
+    wpaTail.unwatch();
+  }
+}
 
 eventEmitter.on('connect_2', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 255), {period: 4000, tracelength: 8});
   console.log("[SoftAP]:\tInvoking WiFi daemon...");
-  wpaTail.watch();
-  execStepCommand("sudo wpa_supplicant -d -B -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf -f config/wpa_log");
+  watchWPA( true );
+  execStepCommand('sudo systemctl start wpa-keepalive.service'); //"sudo wpa_supplicant -B -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf -f config/wpa_log");
 });
 
 wpaTail.on('line', function(line) {
+  if (!watchingWPA) return;
   if (line.indexOf("wlan0: CTRL-EVENT-CONNECTED") > -1) {
     // The WiFi information was valid and we are associated!
     console.log("[SoftAP]:\tSuccessfully associated with WiFi AP.");
     //current_proc.stdout.removeListener('data', parseWpaStdout);
+    watchWPA( false );
     waitForCurrentProcess('connect_3');
   } else if (line.indexOf("wlan0: WPA: 4-Way Handshake failed - pre-shared key may be incorrect") > -1) {
     // The provided password is incorrect
     console.log("[SoftAP]:\tThe provided WiFi credentials don't seem to be valid; probably an incorrect password.");
     //current_proc.stdout.removeListener('data', parseWpaStdout);
+    watchWPA( false );
     killCurrentProcess();
     eventEmitter.emit('failure_incorrect_passphrase');
   } else if (line.indexOf("wlan0: No suitable network found") > -1) {
@@ -320,6 +334,7 @@ wpaTail.on('line', function(line) {
   } else if (line.indexOf("Invalid passphrase") > -1) {
     console.log("[SoftAP]:\tThe provided WiFi passphrase is invalid (incorrect length).");
     //current_proc.stdout.removeListener('data', parseWpaStdout);
+    watchWPA( false );
     killCurrentProcess();
     eventEmitter.emit('failure_incorrect_passphrase');
   }
@@ -360,12 +375,12 @@ eventEmitter.on('failure_ssid_not_found', function() {
 /*
  *  SETUP button interrupt.
  */
-gpio.wiringPiISR(settings.setup_button_pin, gpio.INT_EDGE_RISING, function() {
+/*gpio.wiringPiISR(settings.setup_button_pin, gpio.INT_EDGE_RISING, function() {
   console.log('[SoftAP]:\tSETUP button pressed.');
   eventEmitter.emit("neo", "off");
   killCurrentProcess();
   waitForCurrentProcess('pre-setup');
-});
+});*/
 
 
 /*
