@@ -1,7 +1,12 @@
 #!/usr/bin/env node
 
-var fs = require("fs");
 var http = require("http");
+
+var fs = require("fs");
+var Tail = require("tail").Tail;
+var wpaTail = new Tail("config/wpa_log");
+wpaTail.unwatch();
+
 var gpio = require("wiring-pi");
 var neopixels = require('rpi-ws281x-native');
 
@@ -13,6 +18,12 @@ var events = require("events");
 var eventEmitter = new events.EventEmitter();
 
 var settings = JSON.parse( fs.readFileSync("settings.json", "utf8") );
+
+/*  Setup GPIO channels
+ */
+gpio.setup('gpio');
+gpio.pinMode(settings.setup_button_pin, gpio.INPUT);
+gpio.pullUpDnControl(settings.setup_button_pin, gpio.PUD_UP);
 
 /*
  *  Scales a hex color (assumed @ max brightness) to another max brightness.
@@ -31,11 +42,6 @@ function rgb2Int(r, g, b) {
   return ((r & 0xff) << 16) + ((g & 0xff) << 8) + (b & 0xff);
 }
 
-// Setup GPIO channels
-gpio.setup('gpio');
-gpio.pinMode(settings.setup_button_pin, gpio.INPUT);
-gpio.pullUpDnControl(settings.setup_button_pin, gpio.PUD_UP);
-
 /*
  *  Track & kill child processes
  */
@@ -49,7 +55,7 @@ var killCurrentProcess = function() {
   if (!current_proc) return;
   kill_requested = true;
   psTree( current_proc.pid, function(err, children) {
-      child_process.spawnSync('kill', ['-2'].concat(children.map(function(p) {return p.PID})));  
+      child_process.spawnSync('kill', ['-2'].concat(children.map(function(p) {return p.PID})));
   });
 };
 
@@ -122,8 +128,8 @@ var getScanResults = function() {
    *  (3) Parse raw scan results line by line.
    */
   console.log("Parsing WiFi scan results...");
-  for (line of scanByLines) {
-    line = line.trim(); // remove any trailing white space
+  for (l=0; l<scanByLines.length; l++) {
+    var line = scanByLines[l].trim(); // remove any trailing white space
 
     if ( iwlist_parse.new_cell.test(line) ) {
       // This is a new cell, reset the current scan result object.
@@ -253,6 +259,7 @@ eventEmitter.on('pre-setup', function() {
 eventEmitter.on('setup_1', function() {
   eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 1500, tracelength: 8});
   console.log("[SoftAP]:\tInitializing access point...");
+  wpaTail.unwatch();
   configureHostapd();
   execStepCommand("sudo bash scripts/beacon_up", "setup_2");
 });
@@ -284,51 +291,41 @@ eventEmitter.on('setup_4', function() {
  *  Register CONNECT commands.
  */
 eventEmitter.on('connect_1', function() {
-    eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 5000, tracelength: 8});
-    console.log("[SoftAP]:\tTearing down any pre-existing WiFi daemon...");
-    execStepCommand("sudo wpa_cli -i wlan0 terminate", 'connect_2');
+  eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 5000, tracelength: 8});
+  console.log("[SoftAP]:\tTearing down any pre-existing WiFi daemon...");
+  execStepCommand('sudo systemctl stop wpa-keepalive.service', 'connect_2');//"sudo wpa_cli -i wlan0 terminate", 'connect_2');
 });
 
-var wpaOutputBuffer = "";
-eventEmitter.on('connect_2', function() {
-    eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 255), {period: 4000, tracelength: 8});
-    console.log("[SoftAP]:\tInvoking WiFi daemon...");
-
-    execStepCommand("sudo stdbuf -o0 wpa_supplicant -d -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf");
-
-    wpaOutputBuffer = "";
-    current_proc.stdout.on('data', parseWpaStdout);
-});
-
-function parseWpaStdout(data) {
-  data = data.toString();
-  cleanEnd = false;
-  if (data[data.length-1] === '\n') {
-    cleanEnd = true;
-  }
-  var lines = data.split("\n");
-  for (var k=0; k<lines.length-1; k++) {
-    var line = wpaOutputBuffer + lines[k];
-    wpaOutputBuffer = "";
-    processWpaStdout( line );
-  }
-  if (cleanEnd) {
-    processWpaStdout( lines[k] );
+watchingWPA = false;
+function watchWPA( watch ) {
+  watchingWPA = watch;
+  if (watch) {
+    wpaTail.watch();
   } else {
-    wpaOutputBuffer += lines[k];
+    wpaTail.unwatch();
   }
 }
 
-function processWpaStdout(line) {
+eventEmitter.on('connect_2', function() {
+  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 255), {period: 4000, tracelength: 8});
+  console.log("[SoftAP]:\tInvoking WiFi daemon...");
+  watchWPA( true );
+  execStepCommand('sudo systemctl start wpa-keepalive.service'); //"sudo wpa_supplicant -B -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf -f config/wpa_log");
+});
+
+wpaTail.on('line', function(line) {
+  if (!watchingWPA) return;
   if (line.indexOf("wlan0: CTRL-EVENT-CONNECTED") > -1) {
     // The WiFi information was valid and we are associated!
     console.log("[SoftAP]:\tSuccessfully associated with WiFi AP.");
-    current_proc.stdout.removeListener('data', parseWpaStdout);
-    waitForCurrentProcess('connect_3');  
+    //current_proc.stdout.removeListener('data', parseWpaStdout);
+    watchWPA( false );
+    waitForCurrentProcess('connect_3');
   } else if (line.indexOf("wlan0: WPA: 4-Way Handshake failed - pre-shared key may be incorrect") > -1) {
     // The provided password is incorrect
     console.log("[SoftAP]:\tThe provided WiFi credentials don't seem to be valid; probably an incorrect password.");
-    current_proc.stdout.removeListener('data', parseWpaStdout);
+    //current_proc.stdout.removeListener('data', parseWpaStdout);
+    watchWPA( false );
     killCurrentProcess();
     eventEmitter.emit('failure_incorrect_passphrase');
   } else if (line.indexOf("wlan0: No suitable network found") > -1) {
@@ -336,16 +333,17 @@ function processWpaStdout(line) {
     eventEmitter.emit('failure_ssid_not_found');
   } else if (line.indexOf("Invalid passphrase") > -1) {
     console.log("[SoftAP]:\tThe provided WiFi passphrase is invalid (incorrect length).");
-    current_proc.stdout.removeListener('data', parseWpaStdout);
+    //current_proc.stdout.removeListener('data', parseWpaStdout);
+    watchWPA( false );
     killCurrentProcess();
     eventEmitter.emit('failure_incorrect_passphrase');
   }
-};
+});
 
 eventEmitter.on('connect_3', function() {
-    eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 2000, tracelength: 8});
-    console.log("[SoftAP]:\tFlushing IP address...");
-    execStepCommand("sudo ip addr flush dev wlan0", 'connect_4');
+  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 2000, tracelength: 8});
+  console.log("[SoftAP]:\tFlushing IP address...");
+  execStepCommand("sudo ip addr flush dev wlan0", 'connect_4');
 });
 
 eventEmitter.on('connect_4', function() {
@@ -367,11 +365,11 @@ eventEmitter.on('connect_done', function() {
  *  Connection Failure Events
  */
 eventEmitter.on('failure_incorrect_passphrase', function() {
-    eventEmitter.emit("neo", "breathe", rgb2Int(255, 0, 0));
+  eventEmitter.emit("neo", "breathe", rgb2Int(255, 0, 0));
 });
 
 eventEmitter.on('failure_ssid_not_found', function() {
-    eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 2000, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 2000, tracelength: 8});
 });
 
 /*
@@ -465,7 +463,6 @@ var renderColor = function() {
   for(var i = 0; i < neo_conf.num; i++) {
     neo_conf.pixelData[i] = neo_conf.color;
   }
-  //neopixels.setBrightness( neo_conf.brightness );
   neopixels.render(neo_conf.pixelData);
 };
 
@@ -529,6 +526,7 @@ eventEmitter.on('neo', function(animation_type, color, options) {
 /*
   *                 >>> Launch <<<
   */
+child_process.execSync("sudo systemctl start dhcpcd.service");
 fs.access("config/credentials.conf", fs.F_OK, function(err) {
   if (!err) {
     eventEmitter.emit('connect_1');

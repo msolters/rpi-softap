@@ -6,6 +6,7 @@ sudo chmod 777 -R /etc/rpi-softap
 # (2) Install dependencies
 sudo apt-get update
 sudo apt-get install hostapd udhcpd
+cp /etc/rpi-softap/config/wpa_log.template /etc/rpi-softap/config/wpa_log
 
 # (3) Install NodeJS
 sudo dpkg -i /etc/rpi-softap/resources/node_archive_armhf.deb
@@ -20,7 +21,8 @@ cd /etc/rpi-softap/config
 sudo cp udhcpd /etc/default/udhcpd
 sudo cp udhcpd.conf /etc/udhcpd.conf
 
-# () Copy and initialize service daemon
+# () Copy and initialize service daemons
+sudo cp /etc/rpi-softap/scripts/wpa-keepalive.service /etc/systemd/system/wpa-keepalive.service
 sudo cp /etc/rpi-softap/scripts/rpi-softap.service /etc/systemd/system/rpi-softap.service
 sudo systemctl daemon-reload
 sudo systemctl enable rpi-softap.service

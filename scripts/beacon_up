@@ -5,6 +5,7 @@ sudo killall hostapd
 sudo service udhcpd stop
 
 # (2) Kill the WiFi connection daemon
+sudo systemctl stop wpa-keepalive.service
 sudo wpa_cli -i wlan0 terminate
 
 # (3) Launch the access point
