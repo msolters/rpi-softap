@@ -375,12 +375,12 @@ eventEmitter.on('failure_ssid_not_found', function() {
 /*
  *  SETUP button interrupt.
  */
-/*gpio.wiringPiISR(settings.setup_button_pin, gpio.INT_EDGE_RISING, function() {
+gpio.wiringPiISR(settings.setup_button_pin, gpio.INT_EDGE_RISING, function() {
   console.log('[SoftAP]:\tSETUP button pressed.');
   eventEmitter.emit("neo", "off");
   killCurrentProcess();
   waitForCurrentProcess('pre-setup');
-});*/
+});
 
 
 /*
