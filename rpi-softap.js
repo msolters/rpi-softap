@@ -463,7 +463,6 @@ var renderColor = function() {
   for(var i = 0; i < neo_conf.num; i++) {
     neo_conf.pixelData[i] = neo_conf.color;
   }
-  //neopixels.setBrightness( neo_conf.brightness );
   neopixels.render(neo_conf.pixelData);
 };
 
@@ -527,6 +526,7 @@ eventEmitter.on('neo', function(animation_type, color, options) {
 /*
   *                 >>> Launch <<<
   */
+child_process.execSync("sudo systemctl start dhcpcd.service");
 fs.access("config/credentials.conf", fs.F_OK, function(err) {
   if (!err) {
     eventEmitter.emit('connect_1');
