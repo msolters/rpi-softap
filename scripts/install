@@ -7,6 +7,7 @@ sudo chmod 777 -R /etc/rpi-softap
 sudo apt-get update
 sudo apt-get install hostapd udhcpd
 cp /etc/rpi-softap/config/wpa_log.template /etc/rpi-softap/config/wpa_log
+cp /etc/rpi-softap/settings.json.template /etc/rpi-softap/settings.json
 
 # (3) Install NodeJS
 sudo dpkg -i /etc/rpi-softap/resources/node_archive_armhf.deb
