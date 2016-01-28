@@ -32,19 +32,6 @@ sudo /etc/rpi-softap/scripts/install
 Note that installation can take a while as the GPIO node modules must be compiled and NodeJS is installed.
 
 # Configuration
-## Change SoftAP SSID or WiFi Channel
-The particulars of the SoftAP network that the Pi will create are contained in the `hostapd` config file, located at `/etc/rpi-softap/config/hostapd.conf`.  It should look something like this:
-
-```
-interface=wlan0
-driver=nl80211
-ssid="My Raspberry Pi"
-hw_mode=g
-channel=9
-macaddr_acl=0
-ignore_broadcast_ssid=0
-wmm_enabled=0
-```
 
 ## Settings
 Almost all configuration parameters are defined by the file `settings.json`.
