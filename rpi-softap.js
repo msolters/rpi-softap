@@ -355,9 +355,9 @@ eventEmitter.on('connect_4', function() {
 eventEmitter.on('connect_done', function() {
   console.log('[SoftAP]:\tWiFi connection complete.');
   eventEmitter.emit("neo", "breathe", rgb2Int(0, 255, 0));
-  if ( settings.actions.postConnection ) {
+  if ( settings.actions.whenOnline ) {
     console.log("[SoftAP]:\tExecuting post-connection command...");
-    execStepCommand( settings.actions.postConnection );
+    execStepCommand( settings.actions.whenOnline );
   }
 });
 
