@@ -246,7 +246,7 @@ server = http.createServer( function(req, res) {
  */
 // (0) Pre-Setup
 eventEmitter.on('pre-setup', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(70, 200, 200), {period: 1500, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(70, 200, 200), {period: 1500, tracelength: settings.neopixel.size*0.75});
   console.log("[SoftAP]:\tExecuting pre-setup command...");
   if (settings.actions.preSetup) {
     execStepCommand(settings.actions.preSetup, "setup_1");
@@ -257,7 +257,7 @@ eventEmitter.on('pre-setup', function() {
 
 // (1) Start SoftAP Beacon
 eventEmitter.on('setup_1', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 1500, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 1500, tracelength: settings.neopixel.size*0.75});
   console.log("[SoftAP]:\tInitializing access point...");
   wpaTail.unwatch();
   configureHostapd();
@@ -274,7 +274,7 @@ eventEmitter.on('setup_2', function() {
 
 // (3) Stop the SoftAP Server
 eventEmitter.on('setup_3', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 2000, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(255, 180, 0), {period: 2000, tracelength: settings.neopixel.size*0.75});
   console.log("[SoftAP]:\tServer is now terminating.");
   server.close();
   waitForCurrentProcess('setup_4');
@@ -291,7 +291,7 @@ eventEmitter.on('setup_4', function() {
  *  Register CONNECT commands.
  */
 eventEmitter.on('connect_1', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 5000, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 5000, tracelength: settings.neopixel.size*0.75});
   console.log("[SoftAP]:\tTearing down any pre-existing WiFi daemon...");
   execStepCommand('sudo systemctl stop wpa-keepalive.service', 'connect_2');//"sudo wpa_cli -i wlan0 terminate", 'connect_2');
 });
@@ -307,7 +307,7 @@ function watchWPA( watch ) {
 }
 
 eventEmitter.on('connect_2', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 255), {period: 4000, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 255), {period: 4000, tracelength: settings.neopixel.size*0.75});
   console.log("[SoftAP]:\tInvoking WiFi daemon...");
   watchWPA( true );
   execStepCommand('sudo systemctl start wpa-keepalive.service'); //"sudo wpa_supplicant -B -P /run/wpa_supplicant.wlan0.pid -i wlan0 -D nl80211,wext -c config/credentials.conf -f config/wpa_log");
@@ -341,13 +341,13 @@ wpaTail.on('line', function(line) {
 });
 
 eventEmitter.on('connect_3', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 2000, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 2000, tracelength: settings.neopixel.size*0.75});
   console.log("[SoftAP]:\tFlushing IP address...");
   execStepCommand("sudo ip addr flush dev wlan0", 'connect_4');
 });
 
 eventEmitter.on('connect_4', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 1000, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(0, 255, 150), {period: 1000, tracelength: settings.neopixel.size*0.75});
   console.log("[SoftAP]:\tAcquiring IP address...");
   execStepCommand("sudo dhclient wlan0", 'connect_done');
 });
@@ -369,7 +369,7 @@ eventEmitter.on('failure_incorrect_passphrase', function() {
 });
 
 eventEmitter.on('failure_ssid_not_found', function() {
-  eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 2000, tracelength: 8});
+  eventEmitter.emit("neo", "spin", rgb2Int(255, 255, 0), {period: 2000, tracelength: settings.neopixel.size*0.75});
 });
 
 /*
